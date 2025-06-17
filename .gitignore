@@ -1,0 +1,14 @@
+venv/
+build/
+.dart_tool/
+.packages
+.flutter-plugins
+.flutter-plugins-dependencies
+.idea/
+.vscode/
+*.iml
+*.lock
+*.log
+*.swp
+*.tmp
+pubspec.lock
