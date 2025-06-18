@@ -1,7 +1,11 @@
+import 'dart:convert';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 import 'add_task_screen.dart';
 import '../models/task.dart';
 import '../services/api_service.dart';
+import 'register_screen.dart';
 
 class HelloKittyHomePage extends StatefulWidget {
   const HelloKittyHomePage({super.key});
@@ -12,23 +16,172 @@ class HelloKittyHomePage extends StatefulWidget {
 
 class _HelloKittyHomePageState extends State<HelloKittyHomePage> {
   late Future<List<Task>> _tasksFuture;
+  bool isLoggedIn = false;
+  String user = '';
+
+  final _formKey = GlobalKey<FormState>();
+  final _userController = TextEditingController();
+  final _passwordController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
-    _tasksFuture = ApiService.fetchTasks();
+    _tasksFuture = Future.value([]); // Inicia vazio até login
   }
 
   void _refreshTasks() {
+    if (isLoggedIn && user.isNotEmpty) {
+      setState(() {
+        _tasksFuture = ApiService.fetchTasks(user);
+      });
+    }
+  }
+
+ Future<void> login(String userInput, String password) async {
+  final url = Uri.parse('http://127.0.0.1:8000/api/login/');
+  final response = await http.post(
+    url,
+    headers: {'Content-Type': 'application/json'},
+    body: jsonEncode({'username': userInput, 'password': password}), // << CORRIGIDO AQUI
+  );
+
+  if (response.statusCode == 200) {
     setState(() {
-      _tasksFuture = ApiService.fetchTasks();
+      isLoggedIn = true;
+      user = userInput;
+      _tasksFuture = ApiService.fetchTasks(userInput);
     });
+    Navigator.pop(context); // Fecha drawer
+  } else {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Erro de login'),
+        content: const Text('Usuário ou senha inválidos'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+
+  void logout() {
+    setState(() {
+      isLoggedIn = false;
+      user = '';
+      _tasksFuture = Future.value([]); // Limpa lista de tasks
+    });
+    Navigator.pop(context); // Fecha drawer
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFFFF0F5),
+      drawer: Drawer(
+        child: isLoggedIn
+            ? Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(Icons.person, size: 80, color: Colors.pink),
+                    Text('Bem-vindo, $user!',
+                        style: const TextStyle(fontSize: 18)),
+                    const SizedBox(height: 20),
+                    ElevatedButton(
+                      onPressed: logout,
+                      child: const Text("Logout"),
+                    )
+                  ],
+                ),
+              )
+            : Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Form(
+                  key: _formKey,
+                  child: ListView(
+                    children: [
+                      const Text(
+                        'Login',
+                        style: TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.pink),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 20),
+                      TextFormField(
+                        controller: _userController,
+                        decoration: const InputDecoration(
+                          labelText: 'Usuário',
+                          border: OutlineInputBorder(),
+                        ),
+                        validator: (value) =>
+                            value!.isEmpty ? 'Informe o usuário' : null,
+                      ),
+                      const SizedBox(height: 10),
+                      TextFormField(
+                        controller: _passwordController,
+                        obscureText: true,
+                        decoration: const InputDecoration(
+                          labelText: 'Senha',
+                          border: OutlineInputBorder(),
+                        ),
+                        validator: (value) =>
+                            value!.isEmpty ? 'Informe a senha' : null,
+                      ),
+                      const SizedBox(height: 20),
+                      ElevatedButton(
+                        onPressed: () {
+                          if (_formKey.currentState!.validate()) {
+                            login(_userController.text,
+                                _passwordController.text);
+                          }
+                        },
+                        child: const Text('Entrar'),
+                      ),
+                      const SizedBox(height: 20),
+                      Center(
+                        child: RichText(
+                          text: TextSpan(
+                            text: 'Não tem conta? ',
+                            style: const TextStyle(color: Colors.black),
+                            children: [
+                              TextSpan(
+                                text: 'Cadastre-se',
+                                style: const TextStyle(
+                                  color: Colors.blue,
+                                  decoration: TextDecoration.underline,
+                                ),
+                                recognizer: TapGestureRecognizer()
+                                  ..onTap = () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) =>
+                                            const RegisterScreen(),
+                                      ),
+                                    );
+                                  },
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+      ),
+      appBar: AppBar(
+        backgroundColor: Colors.pink[100],
+        title: const Text('Hello Kitty Tasks'),
+      ),
       body: SafeArea(
         child: Column(
           children: [
@@ -65,10 +218,12 @@ class _HelloKittyHomePageState extends State<HelloKittyHomePage> {
                   FutureBuilder<List<Task>>(
                     future: _tasksFuture,
                     builder: (context, snapshot) {
-                      if (snapshot.connectionState == ConnectionState.waiting) {
+                      if (snapshot.connectionState ==
+                          ConnectionState.waiting) {
                         return const Text(
                           'Loading...',
-                          style: TextStyle(fontSize: 18, color: Colors.brown),
+                          style:
+                              TextStyle(fontSize: 18, color: Colors.brown),
                         );
                       } else if (snapshot.hasError) {
                         return const Text(
@@ -87,18 +242,29 @@ class _HelloKittyHomePageState extends State<HelloKittyHomePage> {
                     },
                   ),
                   GestureDetector(
-                    onTap: () async {
-                      await Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (context) => const AddTaskScreen()),
-                      );
-                      _refreshTasks(); // Recarrega após voltar
-                    },
-                    child: const Chip(
-                      backgroundColor: Colors.pink,
+                    onTap: isLoggedIn
+                        ? () async {
+                            final result = await Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                  builder: (context) => AddTaskScreen(
+                                        user: user,
+                                      )),
+                            );
+                            if (result == true) {
+                              _refreshTasks();
+                            }
+                          }
+                        : null,
+                    child: Chip(
+                      backgroundColor:
+                          isLoggedIn ? Colors.pink : Colors.grey[400],
                       label: Text(
                         'Add Task',
-                        style: TextStyle(color: Colors.white),
+                        style: TextStyle(
+                            color: isLoggedIn
+                                ? Colors.white
+                                : Colors.grey[700]),
                       ),
                     ),
                   ),
@@ -113,9 +279,16 @@ class _HelloKittyHomePageState extends State<HelloKittyHomePage> {
                   if (snapshot.connectionState == ConnectionState.waiting) {
                     return const Center(child: CircularProgressIndicator());
                   } else if (snapshot.hasError) {
-                    return const Center(child: Text('Erro ao carregar tarefas'));
+                    return const Center(
+                        child: Text('Erro ao carregar tarefas'));
                   } else if (snapshot.data!.isEmpty) {
-                    return const Center(child: Text('Nenhuma tarefa encontrada'));
+                    return Center(
+                        child: Text(
+                      isLoggedIn
+                          ? 'Nenhuma tarefa encontrada'
+                          : 'Faça login para ver suas tarefas',
+                      style: const TextStyle(fontSize: 16),
+                    ));
                   }
 
                   final tasks = snapshot.data!;

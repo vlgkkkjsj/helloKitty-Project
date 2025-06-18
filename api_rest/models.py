@@ -3,60 +3,63 @@ from django.core.exceptions import ValidationError
 from django.db import models
 from django.conf import settings
 from django.utils import timezone
-from django.utils.translation import gettext_lazy as _
 
 class UserManager(BaseUserManager):
-    
-    def create_user(self, nickname, area, age, username, password=None, id_user=None, **extra_fields):
+
+    def create_user(self, username, password=None, nickname=None, area=None, age=None, id_user=None, **extra_fields):
         if not username:
             raise ValueError('O nome de usuário deve ser fornecido')
+        
+        username = self.model.normalize_username(username.strip())
+        
         user = self.model(
-            nickname=nickname.strip(),
-            id_user=id_user,
-            area=area,
+            username=username,
+            nickname=(nickname or '').strip() if nickname else '',
+            area=(area or '').strip() if area else '',
             age=age,
-            username=self.model.normalize_username(username.strip()),
+            id_user=id_user,
             **extra_fields
         )
         user.set_password(password)
         user.save(using=self._db)
         return user
 
-    def create_superuser(self, nickname, username, password=None, **extra_fields):
-        if not username:
-            raise ValueError('O nome de usuário deve ser fornecido')
-         
-        superuser = self.model(
-            nickname=nickname.strip(),
-            username=self.model.normalize_username(username.strip()),
-            **extra_fields
-        )
-        superuser.is_staff = True
-        superuser.is_admin = True
-        superuser.is_superuser = True
-        superuser.set_password(password)
-        superuser.save(using=self._db)
-        return superuser
-    
-    def create_admin(self, nickname, username, password=None, id_user=None, **extra_fields):
+    def create_superuser(self, username, password=None, nickname=None, **extra_fields):
         if not username:
             raise ValueError('O nome de usuário deve ser fornecido')
 
-        admin = self.model(
-            nickname=nickname.strip(),
-            username=self.model.normalize_username(username.strip()),
+        user = self.create_user(
+            username=username,
+            password=password,
+            nickname=nickname,
+            **extra_fields
+        )
+        user.is_staff = True
+        user.is_admin = True
+        user.is_superuser = True
+        user.save(using=self._db)
+        return user
+
+    def create_admin(self, username, password=None, nickname=None, id_user=None, **extra_fields):
+        if not username:
+            raise ValueError('O nome de usuário deve ser fornecido')
+
+        user = self.create_user(
+            username=username,
+            password=password,
+            nickname=nickname,
             id_user=id_user,
             **extra_fields
         )
-        admin.set_password(password)
-        admin.is_staff = True
-        admin.is_admin = True
-        admin.is_superuser = False
-        admin.save(using=self._db)
-        return admin
+        user.is_staff = True
+        user.is_admin = True
+        user.is_superuser = False
+        user.save(using=self._db)
+        return user
+
 
 class User(AbstractBaseUser, PermissionsMixin):
-    username = models.CharField(max_length=100, unique=True, primary_key=True)  # OK, mas considere remover primary_key
+    username = models.CharField(max_length=100, unique=True)  # removido primary_key para evitar problemas
     nickname = models.CharField(max_length=100)
     id_user = models.CharField(max_length=18, unique=True)
     area = models.CharField(max_length=100, blank=True)
@@ -67,23 +70,8 @@ class User(AbstractBaseUser, PermissionsMixin):
     date_joined = models.DateTimeField(default=timezone.now)
     photo = models.ImageField(upload_to='profile_photos/', null=True, blank=True)
 
-    groups = models.ManyToManyField(
-        Group,
-        related_name='custom_user_set',
-        blank=True,
-        help_text='Grupos aos quais este usuário pertence.',
-        verbose_name='grupos',
-    )
-    user_permissions = models.ManyToManyField(
-        Permission,
-        related_name='custom_user_permissions',
-        blank=True,
-        help_text='Permissões específicas deste usuário.',
-        verbose_name='permissões de usuário',
-    )
-
     USERNAME_FIELD = 'username'
-    REQUIRED_FIELDS = ['nickname']
+    REQUIRED_FIELDS = ['nickname', 'id_user']  # id_user adicionado para obrigar no createsuperuser
 
     objects = UserManager()
 
@@ -98,15 +86,18 @@ class User(AbstractBaseUser, PermissionsMixin):
             raise ValidationError({'id_user': 'O ID deve ter 18 caracteres.'})
 
     def save(self, *args, **kwargs):
-        self.username = self.username.strip()
-        self.nickname = self.nickname.strip()
+        if self.username:
+            self.username = self.username.strip()
+        if self.nickname:
+            self.nickname = self.nickname.strip()
         super().save(*args, **kwargs)
 
 
 class PriorityChoices(models.TextChoices):
-    LOW = 'Low',
-    MEDIUM = 'Medium',
-    HIGH = 'High', 
+    LOW = 'Low', 'Low'
+    MEDIUM = 'Medium', 'Medium'
+    HIGH = 'High', 'High'
+
 
 class Task(models.Model):
     user = models.ForeignKey(
@@ -117,7 +108,7 @@ class Task(models.Model):
     title = models.CharField(max_length=150)
     description = models.TextField(blank=True, null=True)
     is_completed = models.BooleanField(default=False)
-    updated_at = models.DateTimeField(auto_now=True)  # CORRIGIR para 'updated_at'
+    updated_at = models.DateTimeField(auto_now=True)
     created_at = models.DateTimeField(auto_now_add=True)
     due_date = models.DateField(null=True, blank=True)
     priority = models.CharField(

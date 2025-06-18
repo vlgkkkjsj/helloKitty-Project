@@ -1,36 +1,81 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-from rest_framework.permissions import IsAuthenticated
-from rest_framework_simplejwt.authentication import JWTAuthentication
-from django.http import JsonResponse
-from rest_framework_simplejwt.views import TokenObtainPairView
-from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
-from django.contrib.auth import get_user_model
-
-
-
+from django.contrib.auth import get_user_model, authenticate
+from django.shortcuts import get_object_or_404
 
 from .models import Task
-from .serializers import TaskSerializer
-from django.shortcuts import get_object_or_404
-from django.utils.timezone import now
+from .serializers import (
+    UserSerializer,
+    TaskSerializer,
+    LoginSerializer,
 
-import logging
+)
 
 
 User = get_user_model()
 
+# ====================== REGISTER ======================
 
-logger = logging.getLogger(__name__)
+class RegisterAPIView(APIView):
+    permission_classes = []
 
-# views.py
-from rest_framework_simplejwt.views import TokenObtainPairView
-from .serializers import CustomTokenObtainPairSerializer
+    def get(self, request):
+        return Response(
+            {"message": "API de cadastro. Envie uma requisição POST para criar um usuário."},
+            status=status.HTTP_200_OK
+        )
 
-class CustomTokenObtainPairView(TokenObtainPairView):
-    serializer_class = CustomTokenObtainPairSerializer
+    def post(self, request):
+        serializer = UserSerializer(data=request.data)
+        if serializer.is_valid():
+            user = serializer.save()
+            return Response({
+                "message": "Usuário criado com sucesso",
+                "user": UserSerializer(user).data
+            }, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+
+# ====================== LOGIN ======================
+
+class LoginAPIView(APIView):
+    permission_classes = []
+
+    def post(self, request):
+        username = request.data.get("username")
+        password = request.data.get("password")
+
+        if not username or not password:
+            return Response(
+                {"error": "Informe username e password."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        try:
+            user = User.objects.get(username=username)
+            if user.check_password(password):
+                return Response({
+                    "message": "Login bem-sucedido",
+                    "user": {
+                        "id": user.id,
+                        "username": user.username,
+                        "nickname": user.nickname,
+                        "id_user": user.id_user
+                    }
+                }, status=status.HTTP_200_OK)
+            else:
+                return Response(
+                    {"error": "Senha inválida"},
+                    status=status.HTTP_401_UNAUTHORIZED
+                )
+        except User.DoesNotExist:
+            return Response(
+                {"error": "Usuário não encontrado"},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+# ====================== TASK CRUD ======================
 
 class TaskAPIView(APIView):
     authentication_classes = []
@@ -83,9 +128,13 @@ class TaskAPIView(APIView):
         task.delete()
         return Response({'detail': 'Tarefa deletada com sucesso'}, status=status.HTTP_204_NO_CONTENT)
 
-    
+# ====================== HOME ======================
+
 class HomeAPIView(APIView):
     permission_classes = []
 
     def get(self, request):
-        return Response({"message": f"Bem-vindo, {request.user.username}!"})
+        return Response({"message": "API está funcionando corretamente!"})
+
+
+# ====================== JWT (Opcional) ======================

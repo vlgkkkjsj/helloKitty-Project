@@ -26,9 +26,12 @@ SECRET_KEY = 'django-insecure-0n2+6$2#)iqb!ikf7_z0hbkp@ao$znu%p!3*d7cd4e-kwe*ji=
 DEBUG = False
 
 ALLOWED_HOSTS = ['localhost', '127.0.0.1']  # ou seus domínios
-
+AUTH_USER_MODEL = 'api_rest.User'
 
 # Application definition
+AUTHENTICATION_BACKENDS = [
+    'django.contrib.auth.backends.ModelBackend',
+]
 
 INSTALLED_APPS = [
     'django.contrib.admin',
