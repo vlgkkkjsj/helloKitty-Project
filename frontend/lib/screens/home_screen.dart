@@ -6,6 +6,8 @@ import 'add_task_screen.dart';
 import '../models/task.dart';
 import '../services/api_service.dart';
 import 'register_screen.dart';
+import 'dart:ui';
+
 
 class HelloKittyHomePage extends StatefulWidget {
   const HelloKittyHomePage({super.key});
@@ -271,9 +273,9 @@ appBar: AppBar(
                     height: 120,
                   ),
                   const SizedBox(height: 8),
-                  const Text(
-                    'a beautiful day!',
-                    style: TextStyle(
+                   Text(
+                      'Suas Tarefas, $user!',                    
+                      style: TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.bold,
                       color: Colors.brown,
@@ -307,7 +309,7 @@ appBar: AppBar(
                         return Text(
                           'Tasks Total: ${snapshot.data!.length}',
                           style: const TextStyle(
-                            fontSize: 18,
+                            fontSize: 15,
                             color: Colors.brown,
                           ),
                         );
@@ -374,13 +376,15 @@ appBar: AppBar(
                     itemBuilder: (context, index) {
                       final task = tasks[index];
                       return TaskTile(
-                        task: task, // ✅ CORRETO
+                        task: task, 
                         icon: Icons.task_alt,
                         emoji: task.priority == 'High'
                               ? '🔥'
                               : task.priority == 'Medium'
                                   ? '💼'
                                   : '🧸',
+                        onTaskDeleted: _refreshTasks, // função de delete que chama o _refreshTasks
+
                         );
                     },
                   );
@@ -420,11 +424,15 @@ class TaskTile extends StatelessWidget {
   final IconData icon;
   final String emoji;
 
+  //callback pra atualizar a lista 
+  final VoidCallback onTaskDeleted;
+
   const TaskTile({
     super.key,
     required this.task,
     required this.icon,
     required this.emoji,
+    required this.onTaskDeleted, //recebe o callback pra att a lista
   });
 
   @override
@@ -435,135 +443,12 @@ class TaskTile extends StatelessWidget {
         borderRadius: BorderRadius.circular(20),
       ),
       child: ListTile(
-        onTap: () {
-          showDialog(
-            context: context,
-            builder: (ctx) => AlertDialog(
-              backgroundColor: const Color(0xFFFFF0F5),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(30),
-              ),
-              title: Center(
-                child: Text(
-                  task.title,
-                  style: const TextStyle(
-                    color: Colors.brown,
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  if (task.description.isNotEmpty) ...[
-                    const Text(
-                      "Descrição:",
-                      style: TextStyle(
-                        color: Colors.pink,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFFFF0F5),
-                        border: Border.all(color: Colors.pink),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Text(
-                        task.description,
-                        style: const TextStyle(color: Colors.brown),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                  ],
-                  const Text(
-                    "Data de entrega:",
-                    style: TextStyle(
-                      color: Colors.pink,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFFFF0F5),
-                      border: Border.all(color: Colors.pink),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Text(
-                      task.dueDate ?? 'Não definida',
-                      style: const TextStyle(color: Colors.brown),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  const Text(
-                    "Prioridade:",
-                    style: TextStyle(
-                      color: Colors.pink,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFFFF0F5),
-                      border: Border.all(color: Colors.pink),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Text(
-                      task.priority,
-                      style: const TextStyle(color: Colors.brown),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  const Text(
-                    "Status:",
-                    style: TextStyle(
-                      color: Colors.pink,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFFFF0F5),
-                      border: Border.all(color: Colors.pink),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Text(
-                      task.isCompleted ? "✅ Concluída" : "❌ Não concluída",
-                      style: const TextStyle(color: Colors.brown),
-                    ),
-                  ),
-                ],
-              ),
-              actions: [
-                Center(
-                  child: TextButton(
-                    onPressed: () => Navigator.of(ctx).pop(),
-                    child: const Text(
-                      "Fechar",
-                      style: TextStyle(
-                        color: Colors.blue,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          );
+        // onTap espera o resultado da dialog e chama callback se deletado
+        onTap: () async {
+          final result = await _showTaskDetails(context);
+          if (result == true) {
+            onTaskDeleted();
+          }
         },
         leading: Text(
           emoji,
@@ -580,7 +465,173 @@ class TaskTile extends StatelessWidget {
       ),
     );
   }
+
+  //_showTaskDetails agora retorna Future<bool?> para indicar se tarefa foi deletada
+  Future<bool?> _showTaskDetails(BuildContext context) {
+    return showDialog<bool>(
+      context: context,
+      builder: (ctx) {
+        return Dialog(
+          backgroundColor: Colors.transparent,
+          insetPadding: const EdgeInsets.all(16),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(30),
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
+              child: Container(
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFFF0F5).withOpacity(0.97),
+                  borderRadius: BorderRadius.circular(30),
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Título
+                    Text(
+                      task.title,
+                      style: const TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.brown,
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+
+                    // Campos de detalhes
+                    _buildField("Descrição da tarefa", task.description),
+                    _buildField("Data de entrega", task.dueDate ?? 'Não definida'),
+                    _buildField("Importância", task.priority),
+                    const SizedBox(height: 16),
+
+                    // Botões de ação
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.delete_outline, size: 32, color: Colors.pink),
+                          onPressed: () async {
+                            final confirm = await showDialog<bool>(
+                              context: context,
+                              builder: (ctx) => AlertDialog(
+                                title: const Text('Confirmar exclusão'),
+                                content: Text('Deseja excluir a tarefa "${task.title}"?'),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () => Navigator.of(ctx).pop(false),
+                                    child: const Text('Cancelar'),
+                                  ),
+                                  TextButton(
+                                    onPressed: () => Navigator.of(ctx).pop(true),
+                                    child: const Text(
+                                      'Excluir',
+                                      style: TextStyle(color: Colors.red),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            );
+
+                            if (confirm == true) {
+                              final success = await ApiService.deleteTask(task.id);
+
+                              if (success && context.mounted) {
+                                Navigator.of(context).pop(true); 
+                                // retorna true para indicar que deletou 
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(content: Text('Tarefa deletada com sucesso')),
+                                );
+                              } else {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(content: Text('Erro ao deletar a tarefa')),
+                                );
+                              }
+                            }
+                          },
+                        ),
+                      ],
+                    ),
+
+                    const SizedBox(height: 10),
+
+                    // Botão fechar
+                    TextButton(
+                      onPressed: () => Navigator.of(ctx).pop(false),
+                      child: const Text(
+                        "Fechar",
+                        style: TextStyle(
+                          color: Colors.blue,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  // Função auxiliar para montar os campos
+  Widget _buildField(String label, String? value) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            fontWeight: FontWeight.bold,
+            color: Colors.brown,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          value ?? '',
+          style: const TextStyle(color: Colors.brown),
+        ),
+        const SizedBox(height: 12),
+      ],
+    );
+  }
 }
+
+
+  Widget _buildField(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: const TextStyle(
+              fontSize: 13,
+              color: Colors.pink,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            decoration: BoxDecoration(
+              border: Border.all(color: Colors.pinkAccent),
+              borderRadius: BorderRadius.circular(12),
+              color: Colors.transparent,
+            ),
+            child: Text(
+              value,
+              style: const TextStyle(fontSize: 15, color: Colors.brown),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
 class SectionIcon extends StatelessWidget {
   final IconData icon;

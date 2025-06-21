@@ -52,4 +52,12 @@ class ApiService {
       throw Exception('Erro de conexão');
     }
   }
+  static Future<bool> deleteTask(int taskId) async {
+  final url = Uri.parse('http://127.0.0.1:8000/api/tasks/$taskId/');
+  final response = await http.delete(url);
+
+  return response.statusCode == 204;
+}
+
+  
 }

@@ -1,25 +1,31 @@
 class Task {
+  final int id; // <-- ESTE CAMPO É OBRIGATÓRIO
   final String title;
   final String description;
-  final String dueDate;
+  final String? dueDate;
   final String priority;
   final bool isCompleted;
+  final String user;
 
   Task({
+    required this.id,
     required this.title,
     required this.description,
     required this.dueDate,
     required this.priority,
     required this.isCompleted,
+    required this.user,
   });
 
   factory Task.fromJson(Map<String, dynamic> json) {
     return Task(
-      title: json['title'] ?? '',
+      id: json['id'], // <-- Certifique-se que o campo 'id' vem do JSON
+      title: json['title'],
       description: json['description'] ?? '',
-      dueDate: json['dueDate'] ?? '',
-      priority: json['priority'] ?? 'Medium',
-      isCompleted: json['is_completed'] ?? false ,
+      dueDate: json['due_date'],
+      priority: json['priority'],
+      isCompleted: json['is_completed'],
+      user: json['user'],
     );
   }
 
@@ -27,9 +33,10 @@ class Task {
     return {
       'title': title,
       'description': description,
-      'dueDate': dueDate,
+      'due_date': dueDate,
       'priority': priority,
       'is_completed': isCompleted,
+      'user': user,
     };
   }
 }
