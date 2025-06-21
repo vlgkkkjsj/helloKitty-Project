@@ -36,7 +36,7 @@ class ApiService {
   static Future<List<Task>> fetchTasks(String username) async {
     try {
       final response = await http.get(
-        Uri.parse('$baseUrl?username=$username'),
+        Uri.parse('$baseUrl?user=$username'),
       );
 
       if (response.statusCode == 200) {

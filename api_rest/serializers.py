@@ -70,6 +70,7 @@ class TaskSerializer(serializers.ModelSerializer):
             'updated_at',
             'created_at',
             'due_date',
+            'is_completed',
             'priority',
             'user',
         ]

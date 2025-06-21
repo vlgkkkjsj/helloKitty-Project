@@ -32,6 +32,8 @@ AUTH_USER_MODEL = 'api_rest.User'
 AUTHENTICATION_BACKENDS = [
     'django.contrib.auth.backends.ModelBackend',
 ]
+SESSION_ENGINE = 'django.contrib.sessions.backends.db'
+
 
 INSTALLED_APPS = [
     'django.contrib.admin',

@@ -101,7 +101,7 @@ class PriorityChoices(models.TextChoices):
 
 class Task(models.Model):
     user = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
+        settings.AUTH_USER_MODEL,  # Corrigido
         on_delete=models.CASCADE,
         related_name='tasks'
     )
@@ -111,6 +111,7 @@ class Task(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
     created_at = models.DateTimeField(auto_now_add=True)
     due_date = models.DateField(null=True, blank=True)
+    is_completed = models.BooleanField(default=False)
     priority = models.CharField(
         max_length=15,
         choices=PriorityChoices.choices,

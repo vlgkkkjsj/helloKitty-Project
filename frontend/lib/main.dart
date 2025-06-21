@@ -13,6 +13,10 @@ class HelloKittyApp extends StatelessWidget {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       home: const HelloKittyHomePage(),
+      theme: ThemeData(
+      scaffoldBackgroundColor: const Color(0xFFFFF0F5),
+    ),
+
     );
   }
 }
