@@ -1,8 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:device_preview/device_preview.dart';
 import 'screens/home_screen.dart';
 
 void main() {
-  runApp(const HelloKittyApp());
+  runApp(
+    DevicePreview(
+      enabled: true,  // ou false para desligar
+      builder: (context) => const HelloKittyApp(),
+    ),
+  );
 }
 
 class HelloKittyApp extends StatelessWidget {
@@ -12,11 +18,13 @@ class HelloKittyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
+      useInheritedMediaQuery: true,
+      locale: DevicePreview.locale(context),
+      builder: DevicePreview.appBuilder,
       home: const HelloKittyHomePage(),
       theme: ThemeData(
-      scaffoldBackgroundColor: const Color(0xFFFFF0F5),
-    ),
-
+        scaffoldBackgroundColor: const Color(0xFFFFF0F5),
+      ),
     );
   }
 }

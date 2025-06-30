@@ -20,6 +20,9 @@ class _HelloKittyHomePageState extends State<HelloKittyHomePage> {
   late Future<List<Task>> _tasksFuture;
   bool isLoggedIn = false;
   String user = '';
+  bool _showSearchBar = false;
+  final TextEditingController _searchController = TextEditingController();
+
 
   final _formKey = GlobalKey<FormState>();
   final _userController = TextEditingController();
@@ -268,19 +271,83 @@ appBar: AppBar(
               ),
               child: Column(
                 children: [
-                  Image.asset(
-                    'assets/hello_kitty.gif',
-                    height: 120,
-                  ),
-                  const SizedBox(height: 8),
-                   Text(
-                      'Suas Tarefas, $user!',                    
-                      style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.brown,
+                 Image.asset(
+  'assets/hello_kitty.gif',
+  height: 120,
+),
+const SizedBox(height: 8),
+Text(
+  'Suas Tarefas, $user!',
+  style: const TextStyle(
+    fontSize: 20,
+    fontWeight: FontWeight.bold,
+    color: Colors.brown,
+  ),
+),
+const SizedBox(height: 8),
+
+// 🔍 Lupa + barra animada
+AnimatedSwitcher(
+  duration: const Duration(milliseconds: 300),
+  child: _showSearchBar
+      ? Padding(
+          key: const ValueKey(true),
+          padding: const EdgeInsets.symmetric(horizontal: 24),
+          child: Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _searchController,
+                  decoration: InputDecoration(
+                    hintText: 'Pesquisar tarefas...',
+                    hintStyle: const TextStyle(color: Colors.pink),
+                    filled: true,
+                    fillColor: const Color(0xFFFCEEF2),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(30),
+                      borderSide: const BorderSide(color: Colors.pink),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(30),
+                      borderSide: const BorderSide(color: Colors.pink, width: 2),
                     ),
                   ),
+                  onChanged: (value) {
+                    // TODO: implementar filtro se quiser
+                  },
+                ),
+              ),
+              IconButton(
+                icon: const Icon(Icons.close, color: Colors.pink),
+                onPressed: () {
+                  setState(() {
+                    _showSearchBar = false;
+                    _searchController.clear();
+                  });
+                },
+              ),
+            ],
+          ),
+        )
+      : Padding(
+          key: const ValueKey(false),
+          padding: const EdgeInsets.only(right: 24),
+          child: Align(
+            alignment: Alignment.centerRight,
+            child: IconButton(
+              icon: const Icon(Icons.search, color: Colors.pink),
+              onPressed: () {
+                setState(() {
+                  _showSearchBar = true;
+                });
+              },
+            ),
+          ),
+        ),
+),
+const SizedBox(height: 8),
+
                 ],
               ),
             ),
